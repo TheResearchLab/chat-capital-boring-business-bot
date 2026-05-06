@@ -1,0 +1,38 @@
+{
+  "video_id": "e-xf_sWB07Q",
+  "video_url": "https://www.youtube.com/watch?v=e-xf_sWB07Q",
+  "entry_title": "CES 2026 RECAP",
+  "description": "we're back from Vegas... so much to talk about!",
+  "duration_seconds": 852.0,
+  "live_status": "was_live",
+  "release_timestamp": null,
+  "timestamp": null,
+  "view_count": 114,
+  "thumbnails": [
+    {
+      "url": "https://i.ytimg.com/vi/e-xf_sWB07Q/hqdefault.jpg?sqp=-oaymwEbCKgBEF5IVfKriqkDDggBFQAAiEIYAXABwAEG&rs=AOn4CLD2bxFEFu8M1v8GEvVwQDGnnmLDkg",
+      "height": 94,
+      "width": 168
+    },
+    {
+      "url": "https://i.ytimg.com/vi/e-xf_sWB07Q/hqdefault.jpg?sqp=-oaymwEbCMQBEG5IVfKriqkDDggBFQAAiEIYAXABwAEG&rs=AOn4CLDThQBEMv8YkB2Vt4_EkepdsyxEJg",
+      "height": 110,
+      "width": 196
+    },
+    {
+      "url": "https://i.ytimg.com/vi/e-xf_sWB07Q/hqdefault.jpg?sqp=-oaymwEcCPYBEIoBSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLBU4ZbcubKhnFeRjAjnorKCeUDOrQ",
+      "height": 138,
+      "width": 246
+    },
+    {
+      "url": "https://i.ytimg.com/vi/e-xf_sWB07Q/hqdefault.jpg?sqp=-oaymwEcCNACELwBSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDRwCOnuVCkc9TfWwIEszBK_2bF-g",
+      "height": 188,
+      "width": 336
+    }
+  ],
+  "channel_name": "Kenny Finance",
+  "channel_id": "UCVy04mGPzpFJM9pqpWOWrfA",
+  "channel_url": "https://www.youtube.com/channel/UCVy04mGPzpFJM9pqpWOWrfA",
+  "source_tab": "streams",
+  "fetched_at": "2026-05-06T02:38:06.455001+00:00"
+}
