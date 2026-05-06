@@ -34,5 +34,32 @@
   "channel_id": "UCVy04mGPzpFJM9pqpWOWrfA",
   "channel_url": "https://www.youtube.com/channel/UCVy04mGPzpFJM9pqpWOWrfA",
   "source_tab": "streams",
-  "fetched_at": "2026-05-06T02:38:06.455001+00:00"
+  "fetched_at": "2026-05-06T02:38:06.455001+00:00",
+  "schema_version": "youtube_video_record_v1",
+  "record_type": "youtube_stream_video",
+  "storage": {
+    "json_path": "data/raw/youtube/kenny-finance-streams/videos/SME0LaYCEJI.json",
+    "channel_root": "data/raw/youtube/kenny-finance-streams",
+    "channel_slug": "kenny-finance-streams"
+  },
+  "workflow": {
+    "status": "transcript_ready",
+    "ready_for_transcript": false,
+    "needs_review": false,
+    "notes": null,
+    "timestamps": {
+      "source_fetched_at": "2026-05-06T02:38:06.455001+00:00",
+      "schema_initialized_at": "2026-05-06T02:38:06.455001+00:00",
+      "last_enriched_at": "2026-05-06T03:15:09.988249+00:00"
+    }
+  },
+  "transcript": {
+    "status": "completed",
+    "provider": "supadata",
+    "requested_at": "2026-05-06T03:15:06.216536+00:00",
+    "completed_at": "2026-05-06T03:15:09.988249+00:00",
+    "artifact_path": "data/transcripts/youtube/kenny-finance-streams/SME0LaYCEJI.json",
+    "error": null,
+    "language": "en"
+  }
 }
