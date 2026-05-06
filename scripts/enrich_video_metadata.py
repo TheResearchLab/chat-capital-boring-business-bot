@@ -14,6 +14,9 @@ INDEX_COLUMNS = [
     "video_id",
     "entry_title",
     "video_url",
+    "youtube_published_at",
+    "youtube_published_at_utc",
+    "youtube_published_at_eastern",
     "live_status",
     "duration_seconds",
     "view_count",
@@ -83,6 +86,8 @@ def build_defaults(record: dict, repo_root: Path, json_path: Path) -> dict:
             "requested_at": None,
             "completed_at": None,
             "artifact_path": None,
+            "artifact_schema_version": None,
+            "has_timestamps": False,
             "error": None,
             "language": None,
         },
@@ -103,6 +108,8 @@ def derive_workflow_status(transcript: dict, workflow: dict) -> str:
 
 
 def normalize_record(record: dict, repo_root: Path, json_path: Path) -> dict:
+    had_workflow = "workflow" in record
+    had_transcript = "transcript" in record
     normalized = merge_defaults(deepcopy(record), build_defaults(record, repo_root, json_path))
     transcript = normalized["transcript"]
     workflow = normalized["workflow"]
@@ -113,8 +120,15 @@ def normalize_record(record: dict, repo_root: Path, json_path: Path) -> dict:
         legacy_flags = processing.get("flags") or {}
         legacy_transcript = (processing.get("stages") or {}).get("transcript") or {}
 
-        merge_defaults(workflow, {"timestamps": legacy_timestamps})
-        merge_defaults(transcript, legacy_transcript)
+        if not had_workflow:
+            for key, value in legacy_timestamps.items():
+                if value is not None:
+                    workflow["timestamps"][key] = value
+
+        if not had_transcript:
+            for key, value in legacy_transcript.items():
+                if value is not None:
+                    transcript[key] = value
 
         if workflow.get("needs_review") is False:
             workflow["needs_review"] = bool(legacy_flags.get("needs_review"))
@@ -148,6 +162,9 @@ def build_index_row(record: dict) -> dict:
         "video_id": record.get("video_id") or "",
         "entry_title": record.get("entry_title") or "",
         "video_url": record.get("video_url") or "",
+        "youtube_published_at": record.get("youtube_published_at") or "",
+        "youtube_published_at_utc": record.get("youtube_published_at_utc") or "",
+        "youtube_published_at_eastern": record.get("youtube_published_at_eastern") or "",
         "live_status": record.get("live_status") or "",
         "duration_seconds": record.get("duration_seconds") or "",
         "view_count": record.get("view_count") or "",
@@ -239,6 +256,8 @@ def print_schema() -> None:
             "requested_at": None,
             "completed_at": None,
             "artifact_path": None,
+            "artifact_schema_version": None,
+            "has_timestamps": False,
             "error": None,
             "language": None,
         },

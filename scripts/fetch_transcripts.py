@@ -10,6 +10,9 @@ from supadata import Supadata, SupadataError
 from enrich_video_metadata import enrich_video_metadata
 
 
+ARTIFACT_SCHEMA_VERSION = "supadata_transcript_v2"
+
+
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -30,9 +33,41 @@ def get_supadata_client() -> Supadata:
     return Supadata(api_key=api_key)
 
 
-def get_ready_video_json_files(data_root: Path, retry_failed: bool = False) -> list[Path]:
+def transcript_artifact_path(record: dict, repo_root: Path) -> Path | None:
+    artifact_path = ((record.get("transcript") or {}).get("artifact_path"))
+    if not artifact_path:
+        return None
+    return repo_root / Path(artifact_path)
+
+
+def transcript_payload_has_timestamps(payload: dict) -> bool:
+    return isinstance(payload.get("chunks"), list)
+
+
+def transcript_artifact_needs_timestamps(record: dict, repo_root: Path) -> bool:
+    transcript = record.get("transcript") or {}
+    if transcript.get("status") != "completed":
+        return False
+
+    if transcript.get("has_timestamps"):
+        return False
+
+    artifact_path = transcript_artifact_path(record, repo_root)
+    if artifact_path is None or not artifact_path.exists():
+        return True
+
+    payload = load_json(artifact_path)
+    return not transcript_payload_has_timestamps(payload)
+
+
+def get_ready_video_json_files(
+    data_root: Path,
+    retry_failed: bool = False,
+    upgrade_missing_timestamps: bool = False,
+) -> list[Path]:
     video_files = sorted(path for path in data_root.glob("**/videos/*.json") if path.is_file())
     ready_files: list[Path] = []
+    repo_root = Path(__file__).resolve().parents[1]
 
     for json_path in video_files:
         record = load_json(json_path)
@@ -41,6 +76,8 @@ def get_ready_video_json_files(data_root: Path, retry_failed: bool = False) -> l
         status = transcript.get("status")
 
         if status == "completed":
+            if upgrade_missing_timestamps and transcript_artifact_needs_timestamps(record, repo_root):
+                ready_files.append(json_path)
             continue
 
         if retry_failed:
@@ -58,11 +95,36 @@ def build_transcript_dir(transcript_root: Path, record: dict) -> Path:
     return transcript_root / record["storage"]["channel_slug"]
 
 
+def build_plain_text_from_content(content: list | str) -> str:
+    if isinstance(content, str):
+        return content
+
+    return " ".join(chunk.text.strip() for chunk in content if getattr(chunk, "text", "").strip())
+
+
+def build_transcript_chunks(content: list | str) -> list[dict]:
+    if isinstance(content, str):
+        return []
+
+    chunks: list[dict] = []
+    for chunk in content:
+        chunks.append(
+            {
+                "text": getattr(chunk, "text", None),
+                "offset": getattr(chunk, "offset", None),
+                "duration": getattr(chunk, "duration", None),
+                "lang": getattr(chunk, "lang", None),
+            }
+        )
+
+    return chunks
+
+
 def fetch_transcript_payload(client: Supadata, video_url: str) -> dict:
     transcript = client.transcript(
         url=video_url,
         lang="en",
-        text=True,
+        text=False,
         mode="auto",
     )
 
@@ -70,10 +132,16 @@ def fetch_transcript_payload(client: Supadata, video_url: str) -> dict:
         job_id = getattr(transcript, "job_id", None)
         raise RuntimeError(f"Transcript job started asynchronously for {video_url}: {job_id}")
 
+    chunks = build_transcript_chunks(transcript.content)
+    plain_text = build_plain_text_from_content(transcript.content)
+
     return {
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
         "video_url": video_url,
-        "content": transcript.content,
+        "content": plain_text,
+        "chunks": chunks,
         "lang": transcript.lang,
+        "available_langs": getattr(transcript, "available_langs", []),
         "title": getattr(transcript, "title", None),
         "provider": "supadata",
         "fetched_at": utc_now_iso(),
@@ -85,8 +153,13 @@ def save_transcript_artifacts(transcript_dir: Path, video_id: str, payload: dict
     text_path = transcript_dir / f"{video_id}.txt"
     json_path = transcript_dir / f"{video_id}.json"
 
-    text_path.write_text(payload.get("content", ""), encoding="utf-8")
-    json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    normalized_payload = dict(payload)
+    normalized_payload.setdefault("schema_version", ARTIFACT_SCHEMA_VERSION)
+    normalized_payload.setdefault("chunks", [])
+    normalized_payload["content"] = normalized_payload.get("content", "")
+
+    text_path.write_text(normalized_payload["content"], encoding="utf-8")
+    json_path.write_text(json.dumps(normalized_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     return json_path.as_posix(), text_path.as_posix()
 
@@ -113,6 +186,8 @@ def mark_completed(record: dict, transcript_payload: dict, artifact_path: str) -
     record["transcript"]["provider"] = transcript_payload.get("provider")
     record["transcript"]["completed_at"] = now_iso
     record["transcript"]["artifact_path"] = artifact_path
+    record["transcript"]["artifact_schema_version"] = transcript_payload.get("schema_version")
+    record["transcript"]["has_timestamps"] = transcript_payload_has_timestamps(transcript_payload)
     record["transcript"]["language"] = transcript_payload.get("lang")
     record["transcript"]["error"] = None
 
@@ -133,11 +208,16 @@ def fetch_transcripts(
     index_path: Path,
     limit: int | None = None,
     retry_failed: bool = False,
+    upgrade_missing_timestamps: bool = False,
     dry_run: bool = False,
 ) -> dict:
     client = None if dry_run else get_supadata_client()
     repo_root = Path(__file__).resolve().parents[1]
-    ready_files = get_ready_video_json_files(data_root, retry_failed=retry_failed)
+    ready_files = get_ready_video_json_files(
+        data_root,
+        retry_failed=retry_failed,
+        upgrade_missing_timestamps=upgrade_missing_timestamps,
+    )
     if limit is not None:
         ready_files = ready_files[:limit]
 
@@ -152,17 +232,19 @@ def fetch_transcripts(
         relative_json_path = json_path.relative_to(repo_root).as_posix()
 
         transcript_status = (record.get("transcript") or {}).get("status")
-        if transcript_status == "completed":
+        upgrade_only = transcript_status == "completed"
+        if transcript_status == "completed" and not upgrade_missing_timestamps:
             skipped += 1
             continue
 
         try:
             if dry_run:
-                print(f"Would fetch transcript for {video_id} from {relative_json_path}")
+                action = "upgrade timestamped transcript" if upgrade_only else "fetch transcript"
+                print(f"Would {action} for {video_id} from {relative_json_path}")
                 fetched += 1
                 continue
 
-            if not dry_run:
+            if not dry_run and not upgrade_only:
                 mark_in_progress(record)
                 write_json(json_path, record)
 
@@ -178,14 +260,16 @@ def fetch_transcripts(
                 mark_completed(record, payload, relative_transcript_json_path)
                 write_json(json_path, record)
             fetched += 1
-            print(f"Fetched transcript for {video_id} from {relative_json_path}")
+            action = "Upgraded timestamped transcript" if upgrade_only else "Fetched transcript"
+            print(f"{action} for {video_id} from {relative_json_path}")
         except (SupadataError, RuntimeError, Exception) as exc:
             failed += 1
-            if not dry_run:
+            if not dry_run and not upgrade_only:
                 record = load_json(json_path)
                 mark_failed(record, str(exc))
                 write_json(json_path, record)
-            print(f"Failed transcript fetch for {video_id}: {exc}")
+            action = "timestamp upgrade" if upgrade_only else "transcript fetch"
+            print(f"Failed {action} for {video_id}: {exc}")
 
     if not dry_run:
         enrich_video_metadata(data_root=data_root, index_path=index_path, dry_run=False)
@@ -200,6 +284,7 @@ def fetch_transcripts(
         "skipped": skipped,
         "dry_run": dry_run,
         "retry_failed": retry_failed,
+        "upgrade_missing_timestamps": upgrade_missing_timestamps,
     }
 
 
@@ -228,6 +313,11 @@ def main() -> None:
         help="Also retry transcript records currently marked as failed.",
     )
     parser.add_argument(
+        "--upgrade-missing-timestamps",
+        action="store_true",
+        help="Reprocess completed transcript records whose artifact JSON does not yet contain timestamp chunks.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="List what would be processed without writing files or calling Supadata.",
@@ -240,6 +330,7 @@ def main() -> None:
         index_path=Path(args.index_path),
         limit=args.limit,
         retry_failed=args.retry_failed,
+        upgrade_missing_timestamps=args.upgrade_missing_timestamps,
         dry_run=args.dry_run,
     )
     print(json.dumps(summary, indent=2))
