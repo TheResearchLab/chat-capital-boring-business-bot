@@ -169,6 +169,8 @@ Implementation note:
 - principle extraction should prefer reconstructed topic sections and their section summaries over raw isolated chunks whenever those richer artifacts are available
 - the goal is to move from "this chunk matched a topic" to "this timestamp span was substantively about X, and here is a concise note describing why that matters"
 - when available, principle extraction should also consume the topic-level synthesis layer because those cross-timestamp summaries are a better bridge from repeated local observations to higher-level heuristics and principles
+- the first implementation pass should start from non-outlier topic synthesis entries that already have topic summaries and sufficient section support, so principle extraction begins from the cleanest high-signal slice rather than the entire raw topic surface
+- the extraction output should be lightly normalized after generation: stronger candidates should rank ahead of weaker ones, and exact duplicate principles should be removed before downstream review or agent use
 
 This stage should focus on high-signal content such as:
 
@@ -196,8 +198,9 @@ The intended build order is:
 
 Working completion state:
 
-- steps 1 through 3 now have a usable first pass in-repo
-- the active handoff point is step 4: topic analysis
+- steps 1 through 5 now have a usable first pass in-repo
+- topic analysis and principle extraction both have generated artifacts for the Kenny Finance corpus
+- the current follow-up work is refinement: tighten principle relevance, curate focused artifacts, and prepare downstream bot or agent workflows
 
 ## Working Notes
 

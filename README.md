@@ -79,6 +79,10 @@ Builds cleaned analysis-ready transcript records, preserves community lexicon te
 
 Runs a hybrid topic-analysis pass directly over the chunk-level analysis corpus using seeded topic buckets plus BERTopic semantic clustering, reconstructs topic-linked sections from adjacent chunk assignments, can optionally summarize those sections through Ollama, and can synthesize topic-level summaries across multiple timestamp-separated sections before writing derived topic artifacts into `data/topic_analysis/youtube/...`.
 
+### `scripts/run_principle_extraction.py`
+
+Reads the topic-analysis artifact, filters to high-signal synthesized topics, uses Ollama to extract principle candidates into `data/principles/youtube/...`, and then ranks and exact-deduplicates those candidates before writing the artifact.
+
 ## Current Data Flow
 
 1. Discover stream videos and save raw metadata.
@@ -103,6 +107,8 @@ The current Phase 4 direction is a hybrid seeded-plus-BERTopic pass over the com
 That Phase 4 output is now intended to feed a second layer of section summaries tied back to topic-linked timestamp spans so later principle extraction can use more faithful notes about what the conversation was actually about.
 
 The pipeline now also supports a cross-timestamp topic-synthesis layer so repeated sections linked to the same topic can be summarized into higher-level topic notes before principle extraction.
+
+The next layer is principle extraction from those topic syntheses, starting with non-outlier topics that have enough supporting sections to justify a reusable heuristic, followed by a light post-processing pass that ranks stronger candidates ahead of weaker ones and removes exact repeats.
 
 See [docs/analysis-plan.md](docs/analysis-plan.md) for the working plan that will be updated as this phase is implemented.
 
