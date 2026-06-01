@@ -110,6 +110,8 @@ The pipeline now also supports a cross-timestamp topic-synthesis layer so repeat
 
 The next layer is principle extraction from those topic syntheses, starting with non-outlier topics that have enough supporting sections to justify a reusable heuristic, followed by a light post-processing pass that ranks stronger candidates ahead of weaker ones and removes exact repeats.
 
+A first-pass human-curated consumer layer for the investing-focused principle artifact now lives under `docs/principles/`, split into public equity, private equity, and personal finance docs.
+
 See [docs/analysis-plan.md](docs/analysis-plan.md) for the working plan that will be updated as this phase is implemented.
 
 ## Environment

@@ -186,6 +186,24 @@ Desired outputs:
 - source examples that justify each principle
 - optional grouping by topic or confidence
 
+## Phase 6: Consumer Packaging
+
+Once the raw principle artifact exists, create a narrower consumer layer that is easier for humans and downstream tools to use.
+
+Implementation note:
+
+- this stage should be curated rather than blindly generated from every extracted principle candidate
+- the goal is to collapse overlapping principle candidates into a smaller set of durable, domain-specific operating rules
+- consumer outputs should separate public equity, private equity, and personal finance whenever that split improves clarity for downstream use
+- this layer should explicitly exclude borderline stream-meta, lifestyle, or mixed-content principles that survived earlier filtering but are weak inputs for investor-facing consumers
+- these docs should remain traceable to the focused principle artifact so future refinement can tighten or expand them without losing provenance
+
+Desired outputs:
+
+- curated consumer docs for public equity, private equity, and personal finance
+- a small index that explains curation rules and intended downstream use
+- optional later packaging for bots, agents, or prompt inputs
+
 ## Implementation Order
 
 The intended build order is:
@@ -195,11 +213,13 @@ The intended build order is:
 3. Add chunking for downstream analysis.
 4. Run topic analysis on the prepared corpus.
 5. Add principle extraction on top of the topic-aware dataset.
+6. Curate a consumer-facing principle layer for downstream human, bot, and agent use.
 
 Working completion state:
 
 - steps 1 through 5 now have a usable first pass in-repo
 - topic analysis and principle extraction both have generated artifacts for the Kenny Finance corpus
+- a first-pass consumer layer now exists as curated docs for public equity, private equity, and personal finance principles
 - the current follow-up work is refinement: tighten principle relevance, curate focused artifacts, and prepare downstream bot or agent workflows
 
 ## Working Notes
