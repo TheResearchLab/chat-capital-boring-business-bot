@@ -66,6 +66,7 @@ Initial implementation status:
 - The current implementation records lexicon term hits for the initial native vocabulary while preserving the community terms themselves in cleaned text.
 - Derived analysis records are written under `data/analysis/youtube/...`.
 - The current corpus build has been regenerated after the cleaner refinement and now covers 124 transcript files.
+- The current cleaner plus chunking slice has been validated with focused unit tests and the regenerated analysis corpus has been committed so the repo state matches the derived artifacts on disk.
 
 Likely cleaning tasks:
 
@@ -82,8 +83,8 @@ Expected output shape:
 
 Immediate next step:
 
-- build a chunking stage on top of the cleaned analysis records rather than adding more cleaning complexity first
-- decide whether to move the lexicon into a machine-readable artifact before or alongside chunking
+- start topic analysis on top of the committed chunk-level corpus rather than extending cleaning or chunking first
+- decide whether topic analysis should consume the existing JSON analysis corpus directly or whether a flattened chunk export should be generated first
 
 ## Phase 3: Chunking Strategy
 
@@ -113,6 +114,12 @@ Current output shape inside each analysis record:
 - top-level `source` metadata now includes derived `video_id` and `channel_slug`
 - top-level `chunks.items` stores analysis chunks with cleaned text, character count, and source provenance
 - `analysis_status.chunking_complete` is now true when chunk items are present
+
+Current status:
+
+- the first chunking slice is implemented and committed
+- the derived analysis corpus has been regenerated across the current 124-video scope
+- the next repo-level work should move to topic analysis instead of more chunking work unless a concrete corpus defect is found
 
 ## Phase 4: Topic Analysis
 
@@ -157,6 +164,11 @@ The intended build order is:
 3. Add chunking for downstream analysis.
 4. Run topic analysis on the prepared corpus.
 5. Add principle extraction on top of the topic-aware dataset.
+
+Working completion state:
+
+- steps 1 through 3 now have a usable first pass in-repo
+- the active handoff point is step 4: topic analysis
 
 ## Working Notes
 
