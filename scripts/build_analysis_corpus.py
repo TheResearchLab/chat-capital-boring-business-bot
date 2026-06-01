@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-ANALYSIS_SCHEMA_VERSION = "analysis_record_v1"
+ANALYSIS_SCHEMA_VERSION = "analysis_record_v2"
 COMMUNITY_TERMS = {
     "shredlord": {
         "normalized_term": "shredlord",
@@ -24,9 +24,12 @@ COMMUNITY_TERMS = {
         "signal": "moderation_negative",
     },
 }
-STAGE_DIRECTIONS_PATTERN = re.compile(r"\[(?:laughter|music|applause|cheering|snorts?)\]", re.IGNORECASE)
-QUOTE_MARKER_PATTERN = re.compile(r"(^|\s)>>\s*")
+STAGE_DIRECTIONS_PATTERN = re.compile(r"\[(?:[a-z][a-z\s&'-]{0,40})\]", re.IGNORECASE)
+QUOTE_MARKER_PATTERN = re.compile(r">>")
 WHITESPACE_PATTERN = re.compile(r"\s+")
+SENTENCE_END_PATTERN = re.compile(r"[.!?][\"')\]]?$")
+CHUNK_TARGET_CHARACTER_COUNT = 1200
+CHUNK_MIN_CHARACTER_COUNT = 400
 
 
 def utc_now_iso() -> str:
@@ -44,9 +47,109 @@ def write_json(path: Path, payload: dict) -> None:
 
 def normalize_text(text: str) -> str:
     cleaned = STAGE_DIRECTIONS_PATTERN.sub(" ", text)
-    cleaned = QUOTE_MARKER_PATTERN.sub(r"\1", cleaned)
+    cleaned = QUOTE_MARKER_PATTERN.sub(" ", cleaned)
     cleaned = WHITESPACE_PATTERN.sub(" ", cleaned)
     return cleaned.strip()
+
+
+def extract_video_id(video_url: str | None) -> str | None:
+    if not video_url:
+        return None
+
+    match = re.search(r"[?&]v=([^&]+)", video_url)
+    if match:
+        return match.group(1)
+
+    return video_url.rstrip("/").rsplit("/", maxsplit=1)[-1] or None
+
+
+def should_close_chunk(current_text: str, next_text: str) -> bool:
+    if not current_text:
+        return False
+
+    projected_length = len(current_text) + 1 + len(next_text)
+    if projected_length <= CHUNK_TARGET_CHARACTER_COUNT:
+        return False
+
+    return len(current_text) >= CHUNK_MIN_CHARACTER_COUNT or bool(SENTENCE_END_PATTERN.search(current_text))
+
+
+def finalize_chunk(chunk_index: int, chunk_parts: list[dict], language: str | None) -> dict:
+    start_part = chunk_parts[0]
+    end_part = chunk_parts[-1]
+    start_offset_ms = start_part["offset_ms"]
+    end_offset_ms = end_part["offset_ms"] + end_part["duration_ms"]
+    chunk_text = " ".join(part["text"] for part in chunk_parts)
+
+    return {
+        "chunk_id": f"chunk_{chunk_index:04d}",
+        "text": chunk_text,
+        "character_count": len(chunk_text),
+        "source_provenance": {
+            "start_source_chunk_index": start_part["source_chunk_index"],
+            "end_source_chunk_index": end_part["source_chunk_index"],
+            "start_offset_ms": start_offset_ms,
+            "end_offset_ms": end_offset_ms,
+            "duration_ms": end_offset_ms - start_offset_ms,
+            "language": language,
+        },
+    }
+
+
+def build_analysis_chunks(transcript_payload: dict, cleaned_content: str) -> list[dict]:
+    transcript_chunks = transcript_payload.get("chunks") or []
+    language = transcript_payload.get("lang")
+
+    normalized_parts: list[dict] = []
+    for source_chunk_index, transcript_chunk in enumerate(transcript_chunks):
+        cleaned_chunk_text = normalize_text(transcript_chunk.get("text") or "")
+        if not cleaned_chunk_text:
+            continue
+
+        normalized_parts.append(
+            {
+                "source_chunk_index": source_chunk_index,
+                "text": cleaned_chunk_text,
+                "offset_ms": transcript_chunk.get("offset") or 0,
+                "duration_ms": transcript_chunk.get("duration") or 0,
+            }
+        )
+
+    if not normalized_parts:
+        if not cleaned_content:
+            return []
+
+        return [
+            {
+                "chunk_id": "chunk_0001",
+                "text": cleaned_content,
+                "character_count": len(cleaned_content),
+                "source_provenance": {
+                    "start_source_chunk_index": None,
+                    "end_source_chunk_index": None,
+                    "start_offset_ms": None,
+                    "end_offset_ms": None,
+                    "duration_ms": None,
+                    "language": language,
+                },
+            }
+        ]
+
+    analysis_chunks: list[dict] = []
+    current_chunk_parts: list[dict] = []
+
+    for part in normalized_parts:
+        current_text = " ".join(chunk_part["text"] for chunk_part in current_chunk_parts)
+        if should_close_chunk(current_text, part["text"]):
+            analysis_chunks.append(finalize_chunk(len(analysis_chunks) + 1, current_chunk_parts, language))
+            current_chunk_parts = []
+
+        current_chunk_parts.append(part)
+
+    if current_chunk_parts:
+        analysis_chunks.append(finalize_chunk(len(analysis_chunks) + 1, current_chunk_parts, language))
+
+    return analysis_chunks
 
 
 def extract_term_hits(text: str) -> list[dict]:
@@ -73,6 +176,8 @@ def build_analysis_record(transcript_payload: dict, source_path: Path, output_pa
     content = transcript_payload.get("content") or ""
     cleaned_content = normalize_text(content)
     term_hits = extract_term_hits(cleaned_content)
+    video_url = transcript_payload.get("video_url")
+    analysis_chunks = build_analysis_chunks(transcript_payload, cleaned_content)
 
     return {
         "schema_version": ANALYSIS_SCHEMA_VERSION,
@@ -80,7 +185,9 @@ def build_analysis_record(transcript_payload: dict, source_path: Path, output_pa
         "source": {
             "transcript_json_path": source_path.as_posix(),
             "analysis_json_path": output_path.as_posix(),
-            "video_url": transcript_payload.get("video_url"),
+            "video_url": video_url,
+            "video_id": extract_video_id(video_url),
+            "channel_slug": source_path.parent.name,
             "title": transcript_payload.get("title"),
             "provider": transcript_payload.get("provider"),
             "language": transcript_payload.get("lang"),
@@ -95,9 +202,15 @@ def build_analysis_record(transcript_payload: dict, source_path: Path, output_pa
             "term_hits": term_hits,
             "terms_detected": [hit["term"] for hit in term_hits],
         },
+        "chunks": {
+            "chunking_strategy": "timed_transcript_chunk_aggregation_v1",
+            "target_character_count": CHUNK_TARGET_CHARACTER_COUNT,
+            "minimum_chunk_character_count": CHUNK_MIN_CHARACTER_COUNT,
+            "items": analysis_chunks,
+        },
         "analysis_status": {
             "cleaning_complete": True,
-            "chunking_complete": False,
+            "chunking_complete": bool(analysis_chunks),
             "topic_analysis_complete": False,
             "principle_extraction_complete": False,
             "generated_at": utc_now_iso(),
