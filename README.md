@@ -75,6 +75,10 @@ The script is meant to be rerun as the local dataset grows or as transcript arti
 
 Builds cleaned analysis-ready transcript records, preserves community lexicon terms, and writes derived analysis artifacts into `data/analysis/youtube/...`.
 
+### `scripts/run_topic_analysis.py`
+
+Runs a hybrid topic-analysis pass directly over the chunk-level analysis corpus using seeded topic buckets plus BERTopic semantic clustering, reconstructs topic-linked sections from adjacent chunk assignments, can optionally summarize those sections through Ollama, and can synthesize topic-level summaries across multiple timestamp-separated sections before writing derived topic artifacts into `data/topic_analysis/youtube/...`.
+
 ## Current Data Flow
 
 1. Discover stream videos and save raw metadata.
@@ -93,6 +97,12 @@ The next planned work is the analysis layer:
 3. Chunk cleaned transcript content into analysis-ready units.
 4. Run topic analysis across the corpus.
 5. Extract practical guidelines and principles from the highest-signal transcript segments.
+
+The current Phase 4 direction is a hybrid seeded-plus-BERTopic pass over the committed chunk corpus rather than a separate flattened export.
+
+That Phase 4 output is now intended to feed a second layer of section summaries tied back to topic-linked timestamp spans so later principle extraction can use more faithful notes about what the conversation was actually about.
+
+The pipeline now also supports a cross-timestamp topic-synthesis layer so repeated sections linked to the same topic can be summarized into higher-level topic notes before principle extraction.
 
 See [docs/analysis-plan.md](docs/analysis-plan.md) for the working plan that will be updated as this phase is implemented.
 
@@ -113,6 +123,14 @@ Run the test suite with:
 ```bash
 python -m unittest discover -s tests -p "test_*.py"
 ```
+
+Install the direct Python dependencies for the current analysis workflow with:
+
+```bash
+pip install -r requirements.txt
+```
+
+If you want section summaries from a local LLM pass, run Ollama separately and pass `--ollama-model <model-name>` to the topic-analysis script, or set `OLLAMA_MODEL` in the environment.
 
 ## Notes
 

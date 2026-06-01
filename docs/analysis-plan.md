@@ -125,6 +125,19 @@ Current status:
 
 After cleaning and chunking, run topic analysis across the corpus.
 
+Implementation direction:
+
+- topic analysis should consume the existing chunk-level JSON corpus directly rather than adding a separate flattened export first
+- the first implementation path should be a hybrid approach that combines explicit seeded topic buckets with BERTopic semantic clustering over chunk text
+- the seeded layer should stabilize interpretation around expected channel themes such as investing, business acquisition, operations, career development, AI, and community banter
+- the BERTopic layer should surface semantic clusters, topic terms, and representative examples that the seeded layer would miss on its own
+- the output should be a derived channel-level topic artifact that remains traceable back to per-video and per-chunk sources
+- after initial topic assignment, adjacent chunk assignments should be merged back into topic-linked sections so later analysis can recover what was actually being discussed around a timestamp span rather than only isolated chunk labels
+- those reconstructed sections should optionally receive section summaries from a local LLM pass such as Ollama so the repo can store notes that describe the real substance of the discussion while still linking back to the originally detected topic
+- those section summaries should be treated as an intermediate layer between topic discovery and principle extraction, because they make it easier to reason about higher-level heuristics, norms, and operating principles without losing source traceability
+- after section summaries exist, the pipeline should also synthesize across multiple timestamp-separated sections that share a topic so the repo captures a cross-section topic summary instead of stopping at isolated local notes
+- this cross-timestamp synthesis layer should aggregate the most informative reconstructed sections per topic and produce topic-level notes that describe repeated themes, recurring arguments, and variation across different videos or moments in the stream archive
+
 This stage should answer questions such as:
 
 - what subjects recur most often across the channel?
@@ -137,9 +150,25 @@ Desired outputs:
 - representative chunks or examples per topic
 - optional per-video topic summaries
 
+Planned first-pass artifact:
+
+- one topic analysis JSON summary per channel under a dedicated derived output path
+- chunk-level topic assignments that preserve `video_id`, `chunk_id`, and source offsets
+- seeded topic summaries plus BERTopic-derived semantic topic clusters
+- per-video topic rollups for later principle extraction
+- reconstructed topic sections that merge neighboring chunk assignments from the same video back into timestamped conversational spans
+- optional section summaries that point back to each reconstructed topic section and act as higher-signal notes for later principle extraction
+- topic-level synthesis entries that summarize one topic across multiple timestamp-separated sections while keeping references back to the contributing sections
+
 ## Phase 5: Principle Extraction
 
 After topics are reasonably stable, extract practical guidance and repeatable principles from the strongest transcript segments.
+
+Implementation note:
+
+- principle extraction should prefer reconstructed topic sections and their section summaries over raw isolated chunks whenever those richer artifacts are available
+- the goal is to move from "this chunk matched a topic" to "this timestamp span was substantively about X, and here is a concise note describing why that matters"
+- when available, principle extraction should also consume the topic-level synthesis layer because those cross-timestamp summaries are a better bridge from repeated local observations to higher-level heuristics and principles
 
 This stage should focus on high-signal content such as:
 
