@@ -10,6 +10,12 @@ The workflow is intentionally simple:
 4. Fetch transcripts for eligible records.
 5. Write transcript artifacts and refresh the derived queue.
 
+## Current Status
+
+For the Kenny Finance dataset currently stored in this repo, transcript collection is effectively complete.
+
+That means this workflow has done its job for the current phase: it produced the transcript-ready corpus that the next analysis stage will build on.
+
 ## Main Artifacts
 
 ### Raw channel metadata
@@ -69,3 +75,15 @@ Common values include:
 This keeps the repo focused on one concrete problem: turning a set of saved stream videos into a transcript-ready dataset that can later support search, analysis, and agent-style tooling.
 
 In practice, that means this workflow is not intended as a generic multi-channel ingestion system right now. It is specifically aimed at Kenny Finance channel material and the research needs of Chat Capital.
+
+## Planned Analysis Workflow
+
+The next stage is documented separately in [docs/analysis-plan.md](analysis-plan.md).
+
+At a high level, the planned analysis workflow is:
+
+1. Build a lexicon of community-specific lingo so domain terms are preserved rather than discarded as noise.
+2. Clean and normalize transcript text for downstream analysis.
+3. Chunk transcript content into analysis-ready units.
+4. Run topic analysis over the cleaned corpus.
+5. Extract repeatable guidelines and principles from the most useful segments.

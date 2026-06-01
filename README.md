@@ -48,6 +48,7 @@ This is not a full application yet. The current state of the repo is a practical
 ## Docs
 
 - See [docs/workflow.md](docs/workflow.md) for the current transcript pipeline, main artifacts, and workflow states.
+- See [docs/analysis-plan.md](docs/analysis-plan.md) for the planned transcript-cleaning, lexicon, topic-analysis, and principle-extraction workflow.
 
 ## Key Scripts
 
@@ -71,6 +72,20 @@ The script is meant to be rerun as the local dataset grows or as transcript arti
 2. Enrich those records with transcript workflow fields.
 3. Fetch transcripts for eligible videos.
 4. Store transcript artifacts and refresh the queue/index.
+
+## Next Planned Phase
+
+The transcript collection phase is effectively complete for the current Kenny Finance dataset.
+
+The next planned work is the analysis layer:
+
+1. Build a community lexicon for domain-specific lingo such as recurring Chat Capital and Kenny Finance terms.
+2. Clean and normalize transcript text while preserving meaningful jargon.
+3. Chunk cleaned transcript content into analysis-ready units.
+4. Run topic analysis across the corpus.
+5. Extract practical guidelines and principles from the highest-signal transcript segments.
+
+See [docs/analysis-plan.md](docs/analysis-plan.md) for the working plan that will be updated as this phase is implemented.
 
 ## Environment
 
