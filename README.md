@@ -35,10 +35,15 @@ This is not a full application yet. The current state of the repo is a practical
 │           └── <channel_slug>/
 │               ├── <video_id>.json
 │               └── <video_id>.txt
+│   └── analysis/
+│       └── youtube/
+│           └── <channel_slug>/
+│               └── <video_id>.json
 ├── scripts/
 │   ├── save_stream_video_index.py
 │   ├── enrich_video_metadata.py
 │   └── fetch_transcripts.py
+│   └── build_analysis_corpus.py
 ├── tests/
 │   ├── test_enrich_video_metadata.py
 │   └── test_fetch_transcripts.py
@@ -65,6 +70,10 @@ Normalizes each saved video JSON into a transcript-focused schema and regenerate
 Processes queued videos, calls Supadata for transcript text, writes transcript artifacts, and updates the source metadata records.
 
 The script is meant to be rerun as the local dataset grows or as transcript artifacts need to be refreshed to match the current schema.
+
+### `scripts/build_analysis_corpus.py`
+
+Builds cleaned analysis-ready transcript records, preserves community lexicon terms, and writes derived analysis artifacts into `data/analysis/youtube/...`.
 
 ## Current Data Flow
 

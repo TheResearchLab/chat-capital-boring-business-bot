@@ -28,6 +28,8 @@ If those signals are not handled deliberately, topic analysis and principle extr
 
 Before heavy cleaning, build a small lexicon of recurring community-specific language.
 
+The first-pass lexicon now lives in `docs/community-lexicon.md` and should be treated as the source document for native community terms until a machine-readable artifact is added.
+
 The purpose of this lexicon is to preserve meaningful jargon that a generic NLP pipeline might otherwise treat as noise.
 
 Examples already observed in the corpus include:
@@ -55,6 +57,12 @@ Expected outcome:
 ## Phase 2: Transcript Cleaning And Normalization
 
 Create an analysis-prep step that reads transcript artifacts and produces cleaned text while preserving useful semantics.
+
+Initial implementation status:
+
+- `scripts/build_analysis_corpus.py` now creates one cleaned analysis JSON record per transcript JSON artifact.
+- The first implementation removes obvious transcript markup noise and records lexicon term hits for the initial native vocabulary.
+- Derived analysis records are written under `data/analysis/youtube/...`.
 
 Likely cleaning tasks:
 
