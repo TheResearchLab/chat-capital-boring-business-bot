@@ -1,10 +1,10 @@
 # Chat Capital Boring Business Bot
 
-This repo is the initial release of a transcript and dataset workflow for the Kenny Finance channel and the Chat Capital community.
+This repo is the initial release of a transcript, analysis, and principle-packaging workflow for the Kenny Finance channel and the Chat Capital community.
 
-Today, the project is focused on one concrete job: collecting Kenny Finance stream metadata and transcripts, storing them in a consistent local structure, and keeping the dataset organized enough to support later search, analysis, and bot-style workflows.
+Today, the project covers the full first-pass research pipeline: collecting Kenny Finance stream metadata and transcripts, converting that corpus into analysis-ready artifacts, running topic and principle extraction, and packaging a narrower consumer layer for downstream readers, bots, or agents.
 
-This is not a full application yet. The current state of the repo is a practical data pipeline for building and maintaining the underlying transcript dataset.
+This is not a full application yet. The current state of the repo is a practical research pipeline plus committed derived artifacts.
 
 ## What This Repo Does Today
 
@@ -13,15 +13,35 @@ This is not a full application yet. The current state of the repo is a practical
 - Enriches those saved records with transcript workflow state.
 - Fetches transcripts with Supadata and stores transcript artifacts locally.
 - Maintains a flat queue CSV for tracking transcript readiness and status.
-- Keeps the raw source metadata and transcript outputs in a repo-local data layout.
+- Builds cleaned analysis-ready transcript artifacts.
+- Runs topic analysis and topic-synthesis over the cleaned corpus.
+- Extracts principle candidates from the strongest topic-level synthesis entries.
+- Packages a first-pass curated consumer layer for public equity, private equity, and personal finance.
+- Keeps the raw, derived, and curated outputs in a repo-local data layout.
 
 ## Repo Layout
 
 ```text
 .
 ├── docs/
+│   ├── analysis-plan.md
+│   ├── community-lexicon.md
+│   ├── principles/
+│   │   ├── README.md
+│   │   ├── personal-finance.md
+│   │   ├── private-equity.md
+│   │   └── public-equity.md
 │   └── workflow.md
 ├── data/
+│   ├── analysis/
+│   │   └── youtube/
+│   │       └── <channel_slug>/
+│   │           └── <video_id>.json
+│   ├── principles/
+│   │   └── youtube/
+│   │       └── <channel_slug>/
+│   │           ├── principles.json
+│   │           └── principles_investing_focus.json
 │   ├── raw/
 │   │   └── youtube/
 │   │       ├── transcript_queue.csv
@@ -30,30 +50,36 @@ This is not a full application yet. The current state of the repo is a practical
 │   │           ├── manifest.csv
 │   │           └── videos/
 │   │               └── <video_id>.json
+│   ├── topic_analysis/
+│       └── youtube/
+│           └── <channel_slug>/
+│               └── topic_analysis.json
 │   └── transcripts/
 │       └── youtube/
 │           └── <channel_slug>/
 │               ├── <video_id>.json
 │               └── <video_id>.txt
-│   └── analysis/
-│       └── youtube/
-│           └── <channel_slug>/
-│               └── <video_id>.json
 ├── scripts/
-│   ├── save_stream_video_index.py
+│   ├── build_analysis_corpus.py
 │   ├── enrich_video_metadata.py
-│   └── fetch_transcripts.py
-│   └── build_analysis_corpus.py
+│   ├── fetch_transcripts.py
+│   ├── run_principle_extraction.py
+│   ├── run_topic_analysis.py
+│   └── save_stream_video_index.py
 ├── tests/
+│   ├── test_build_analysis_corpus.py
 │   ├── test_enrich_video_metadata.py
-│   └── test_fetch_transcripts.py
+│   ├── test_fetch_transcripts.py
+│   ├── test_run_principle_extraction.py
+│   ├── test_run_topic_analysis.py
+│   └── test_save_stream_video_index.py
 └── .env
 ```
 
 ## Docs
 
 - See [docs/workflow.md](docs/workflow.md) for the current transcript pipeline, main artifacts, and workflow states.
-- See [docs/analysis-plan.md](docs/analysis-plan.md) for the planned transcript-cleaning, lexicon, topic-analysis, and principle-extraction workflow.
+- See [docs/analysis-plan.md](docs/analysis-plan.md) for the working transcript-cleaning, lexicon, topic-analysis, principle-extraction, and consumer-packaging workflow.
 
 ## Key Scripts
 
@@ -83,32 +109,29 @@ Runs a hybrid topic-analysis pass directly over the chunk-level analysis corpus 
 
 Reads the topic-analysis artifact, filters to high-signal synthesized topics, uses Ollama to extract principle candidates into `data/principles/youtube/...`, and then ranks and exact-deduplicates those candidates before writing the artifact.
 
-## Current Data Flow
+## Current End-To-End Flow
 
 1. Discover stream videos and save raw metadata.
 2. Enrich those records with transcript workflow fields.
 3. Fetch transcripts for eligible videos.
 4. Store transcript artifacts and refresh the queue/index.
+5. Build cleaned analysis-ready transcript records.
+6. Run topic analysis and topic synthesis.
+7. Extract principle candidates and curate consumer docs.
 
-## Next Planned Phase
+## Current Status
 
-The transcript collection phase is effectively complete for the current Kenny Finance dataset.
+The transcript collection and first-pass analysis workflow are both usable for the current Kenny Finance dataset.
 
-The next planned work is the analysis layer:
+The repo now includes completed first-pass artifacts for:
 
-1. Build a community lexicon for domain-specific lingo such as recurring Chat Capital and Kenny Finance terms.
-2. Clean and normalize transcript text while preserving meaningful jargon.
-3. Chunk cleaned transcript content into analysis-ready units.
-4. Run topic analysis across the corpus.
-5. Extract practical guidelines and principles from the highest-signal transcript segments.
+- transcript ingestion
+- analysis corpus building and chunking
+- topic analysis and topic synthesis
+- principle extraction
+- curated consumer packaging
 
-The current Phase 4 direction is a hybrid seeded-plus-BERTopic pass over the committed chunk corpus rather than a separate flattened export.
-
-That Phase 4 output is now intended to feed a second layer of section summaries tied back to topic-linked timestamp spans so later principle extraction can use more faithful notes about what the conversation was actually about.
-
-The pipeline now also supports a cross-timestamp topic-synthesis layer so repeated sections linked to the same topic can be summarized into higher-level topic notes before principle extraction.
-
-The next layer is principle extraction from those topic syntheses, starting with non-outlier topics that have enough supporting sections to justify a reusable heuristic, followed by a light post-processing pass that ranks stronger candidates ahead of weaker ones and removes exact repeats.
+The main follow-up work is now refinement rather than net-new pipeline creation: improving principle relevance, curating focused artifacts further, and preparing downstream bot or agent workflows.
 
 A first-pass human-curated consumer layer for the investing-focused principle artifact now lives under `docs/principles/`, split into public equity, private equity, and personal finance docs.
 
@@ -124,7 +147,7 @@ This project currently expects:
 
 ## Tests
 
-This repo includes a small unit-test baseline for the metadata enrichment flow and transcript queue behavior.
+This repo includes focused unit tests across ingestion, analysis-corpus building, topic analysis, and principle extraction.
 
 Run the test suite with:
 
